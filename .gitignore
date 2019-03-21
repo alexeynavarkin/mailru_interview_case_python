@@ -1,3 +1,6 @@
+# Server backup files
+snapshots/
+
 # Idea project directory
 .idea/
 
