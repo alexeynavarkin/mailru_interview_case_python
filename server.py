@@ -82,15 +82,9 @@ def parse_from_csv(data: str) -> dict:
             name = line['name'].upper()
             currency_rate_update.update({name: rate})
     except ValueError:
-        abort(
-            400,
-            "Error parsing CSV."
-        )
+        abort(400, "Error parsing CSV.")
     except KeyError:
-        abort(
-            400,
-            "Wrong values in data provided."
-        )
+        abort(400, "Wrong values in data provided.")
     return currency_rate_update
 
 
@@ -112,12 +106,12 @@ def load_data(data: str, data_format: str, merge=True):
     backup_currency_rate()
 
 
-"""
-App factory
-"""
-
-
-def create_app():
+def create_app() -> Flask:
+    """
+    For initializations before app run.
+        Searches for snapshots in backup folder specified in settings.py
+    :return: flask.app instance
+    """
     app = Flask(__name__)
     restore_currency_rate()
 
