@@ -146,7 +146,18 @@ def update_currency_rate(data: str, data_format: str, merge=True):
 
 
 def convert(cur_from: str, cur_to: str, amount: float) -> float:
-    return currency_rate[cur_to] / currency_rate[cur_from] * amount
+    try:
+        return currency_rate[cur_to] / currency_rate[cur_from] * amount
+    except KeyError:
+        abort(
+            400,
+            "No rate info about currency you specified."
+        )
+    except ZeroDivisionError:
+        abort(
+            400,
+            "Looks like value rates db invalid. Currency rate can not be zero."
+        )
 
 
 def create_app() -> Flask:
@@ -156,7 +167,6 @@ def create_app() -> Flask:
     :return: flask.app instance
     """
     global currency_rate
-
     app = Flask(__name__)
     app.config.from_pyfile("config.py")
     backup_file_path = find_latest_backup(app.config['BACKUP_PATH'])
@@ -175,11 +185,11 @@ def create_app() -> Flask:
         amount = request.args.get('amount')
 
         if not cur_from:
-            abort(400)
+            abort(400, "No from parameter specified.")
         elif not cur_to:
-            abort(400)
+            abort(400, "No to parameter specified.")
         elif not amount:
-            abort(400)
+            abort(400, "No amount parameter specified.")
 
         try:
             cur_from = str(cur_from).upper()
@@ -188,22 +198,10 @@ def create_app() -> Flask:
         except ValueError:
             abort(400, "Wrong argument type.")
 
-        try:
-            converted = convert(cur_from, cur_to, amount)
-        except KeyError:
-            abort(
-                400,
-                "No rate info about currency you specified."
-            )
-        except ZeroDivisionError:
-            abort(
-                400,
-                "Looks like value rates db invalid. Currency rate can not be zero."
-            )
-        else:
-            resp = Response('{{"amount": {:.2f}}}'.format(converted))
-            resp.headers['Content-Type'] = 'application/json'
-            return resp
+        converted = convert(cur_from, cur_to, amount)
+        resp = Response('{{"amount": {:.2f}}}'.format(converted))
+        resp.headers['Content-Type'] = 'application/json'
+        return resp
 
     @app.route('/database', methods=['POST'])
     def handle_database():
@@ -211,11 +209,11 @@ def create_app() -> Flask:
         merge = request.args.get('merge')
 
         if not data_format:
-            abort(400)
+            abort(400, "No format parameter specified.")
         elif not merge:
             # Or set to default value
             # merge = 0
-            abort(400)
+            abort(400, "No merge parameter specified.")
 
         try:
             data_format = str(data_format)
