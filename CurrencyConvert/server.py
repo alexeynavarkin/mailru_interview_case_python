@@ -10,7 +10,6 @@ from csv import DictReader
 from xml.etree import ElementTree
 import json
 
-from . import config
 
 """
 Currency rate relative to base currency (direct quotation),
@@ -81,12 +80,13 @@ def parse_from_xml(data: str) -> dict:
     try:
         root = ElementTree.fromstring(data)
         for currency in root.iter('currency'):
-            name = currency.find('name').text.upper()
-            rate = float(currency.find('rate').text)
-            if name and rate:
-                currency_rate_update.update({name: rate})
-            else:
+            name = currency.find('name')
+            rate = currency.find('rate')
+            if name is None or rate is None:
                 abort(400, "Error, check values.")
+            name = name.text.upper()
+            rate = float(rate.text)
+            currency_rate_update.update({name: rate})
     except ElementTree.ParseError:
         abort(400, "Error parsing XML.")
     except ValueError:
@@ -104,7 +104,7 @@ def parse_from_csv(data: str) -> dict:
             currency_rate_update.update({name: rate})
     except ValueError:
         abort(400, "Error parsing CSV.")
-    except KeyError:
+    except (KeyError, TypeError):
         abort(400, "Wrong values in data provided.")
     return currency_rate_update
 
@@ -158,9 +158,8 @@ def create_app() -> Flask:
     global currency_rate
 
     app = Flask(__name__)
-    app.config['backup_path'] = config.BACKUP_PATH
-
-    backup_file_path = find_latest_backup(app.config['backup_path'])
+    app.config.from_pyfile("config.py")
+    backup_file_path = find_latest_backup(app.config['BACKUP_PATH'])
     if backup_file_path:
         app.logger.info("Found backup snapshot, trying to restore.")
         currency_rate = load_backup(backup_file_path)
@@ -229,7 +228,7 @@ def create_app() -> Flask:
         else:
             data = request.data
             update_currency_rate(data.decode('utf8'), data_format, merge)
-            perform_backup(app.config["backup_path"])
+            perform_backup(app.config["BACKUP_PATH"])
         return jsonify(currency_rate)
 
     return app
