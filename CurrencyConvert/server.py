@@ -6,6 +6,7 @@ from . import parse
 from . import validate
 from . import convert
 
+
 """
 Currency rate relative to base currency (direct quotation),
 it's rate should be 1.
@@ -13,7 +14,14 @@ it's rate should be 1.
 Other currencies calculated by cross rate.
 """
 # Safe in threading mode because of GIL,
-# but for multiprocessing mode DB should be used or sync between processes on POST request
+# but for multiprocessing mode DB should be used
+#
+# or sync between processes on POST request e.g. by signal and reloading from a file
+# processes should be synced by locks because of file corruption possibility
+#
+# or MVCC with snapshot isolation can be implemented: write - lock - update, read - snapshot
+#
+# Aiohttp much better for achieving better performance
 currency_rate = dict()
 # Also singleton can be used for dict (by meta or module) instead of global variable
 # That will not help with sync
@@ -24,7 +32,7 @@ currency_rate = dict()
 # class SingleDict(dict, metaclass=SingletonMeta): pass
 
 
-def currency_rate_update(data: str, data_format: str, merge=True):
+def update_currency_rate(data: str, data_format: str, merge=True):
     global currency_rate
     currency_rate_update = dict()
     if data_format == 'json':
@@ -107,7 +115,7 @@ def create_app() -> Flask:
                 400, "Looks like your request has wrong values.")
         else:
             data = request.data
-            currency_rate_update(data.decode('utf8'), data_format, merge)
+            update_currency_rate(data.decode('utf8'), data_format, merge)
             backup.perform(app.config["BACKUP_PATH"], currency_rate)
         return jsonify(currency_rate)
 
