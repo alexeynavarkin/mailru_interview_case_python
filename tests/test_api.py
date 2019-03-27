@@ -1,17 +1,21 @@
-from unittest import TestCase
+from unittest import TestCase, skip
 from time import sleep
 from json import loads, dumps
-from requests import post
+from requests import post, get
+from shutil import rmtree
 import subprocess
+from timeit import timeit
 
 
 class ApiTest(TestCase):
     """
     Not clearly unit testing but not excessive to test like this.
-    Fastest way to complex functionality test.
+    Fastest way to complex/overall functionality test.
     """
     def setUp(self):
-        self._server = subprocess.Popen(("python", "-m", "CurrencyConvert"))
+        self._server = subprocess.Popen(("python", "-m", "CurrencyConvert"),
+                                        stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL)
         sleep(1)
 
     def test_database_json(self):
@@ -67,7 +71,6 @@ class ApiTest(TestCase):
                                 </currency>
                             </data>'''
         response = post("http://127.0.0.1:5000/database?format=xml&merge=0", data=check_data_xml)
-        print(response.text)
         self.assertEqual(check_data, loads(response.text))
 
     def test_persistency(self):
@@ -82,6 +85,27 @@ class ApiTest(TestCase):
         self.setUp()
         self.assertEqual(currency_rate, loads(response.text))
 
+    def test_avg_convert_time(self):
+        """Not load test but avg response on one by one client to keep track of changes"""
+        time = timeit(
+            'get("http://127.0.0.1:5000/convert?from=RUR&to=USD?amount=1000")',
+            number=1000,
+            globals=globals())
+        print(time/1000, end=' ', flush=True)
+
+    def test_avg_database_time(self):
+        """Not load test but avg response on one by one client to keep track of changes"""
+        time = timeit(
+            '''post("http://127.0.0.1:5000/database?format=json&merge=0",\
+            data='{"RUR": 1.0, "EUR": 2.0, "USD": 3.0}')''',
+            number=1000,
+            globals=globals())
+        print(time/1000, end=' ', flush=True)
+
     def tearDown(self):
         self._server.terminate()
         self._server.wait()
+        try:
+            rmtree('snapshots')
+        except FileNotFoundError:
+            pass
