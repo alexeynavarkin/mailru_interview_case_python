@@ -13,9 +13,13 @@ it's rate should be 1.
 Other currencies calculated by cross rate.
 """
 # Safe in threading mode because of GIL,
-# but for multiprocessing mode DB should be used or sync between processes on POST
+# but for multiprocessing mode DB should be used or sync between processes on POST request
 currency_rate = dict()
-# Or we can use singleton dict by meta or module instead of global variable
+# Also singleton can be used for dict (by meta or module) instead of global variable
+# That will not help with sync
+# but looks better
+# but more operations
+# but less obvious
 # from .singleton import SingletonMeta
 # class SingleDict(dict, metaclass=SingletonMeta): pass
 
